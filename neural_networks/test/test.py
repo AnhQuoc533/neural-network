@@ -2,7 +2,7 @@ import pytest
 import h5py
 from sklearn.datasets import make_circles
 from ..neural_network import NeuralNetwork
-from ..activation_func import *
+from ..activations import *
 
 # Load 2D dataset
 data = np.load('datasets/data.npz', allow_pickle=True)
@@ -74,7 +74,7 @@ def test_shallow_nn_1():
     weight = {'W1': np.random.randn(neurons, X.shape[1]).T * 0.01,
               'W2': np.random.randn(neurons, 1) * 0.01}
     model.set_params(X.shape[1], weight=weight)
-    model.set_activations([[np.tanh, d_tanh], [sigmoid, d_sigmoid]])
+    model.set_activations([tanh, sigmoid])
 
     model.fit(X, Y, learning_rate=1.2, epochs=10_000, step=1_000)
 
@@ -363,7 +363,12 @@ def test_gradient_check_3():
     model = NeuralNetwork([5, 3, 1], seed=24)
 
     # Wrong derivative
-    activations = [[np.tanh, d_tanh], [relu, d_leaky_relu], [sigmoid, d_sigmoid]]
+    def false_relu(z, derivative=False):
+        if derivative:
+            return np.where(z < 0, 0.01, 1.)
+        return np.where(z < 0, 0., z)
+
+    activations = [tanh, false_relu, sigmoid]
     model.set_activations(activations)
 
     with pytest.raises(AssertionError):
@@ -374,7 +379,7 @@ def test_gradient_check_3():
     assert model.activations == activations
 
     # Correct derivative
-    activations = [[np.tanh, d_tanh], [relu, d_relu], [sigmoid, d_sigmoid]]
+    activations = [tanh, relu, sigmoid]
     model.set_activations(activations)
     model.check_gradient(x, y)
 

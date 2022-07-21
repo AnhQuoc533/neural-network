@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from time import perf_counter
-from .loss_func import *
-from .activation_func import relu, d_relu, sigmoid, d_sigmoid, d_tanh, softmax, d_softmax
+from .loss import *
+from .activations import relu, sigmoid, tanh, softmax
 
 
 class NeuralNetwork:
@@ -51,41 +51,33 @@ class NeuralNetwork:
     def labels(self):
         return self.__labels
 
-    def set_activations(self, activations: list[list] = None):
+    def set_activations(self, activations: list = None):
         if len(self.__activations):
             self.__activations = []
 
-        try:
-            if activations is None:
-                if self.is_clf:
-                    if self.neurons[-1] == 1:
-                        self.__activations += [(relu, d_relu)] * (len(self.__neurons) - 1)
-                        self.__activations.append((sigmoid, d_sigmoid))
-                    else:
-                        self.__activations += [(np.tanh, d_tanh)] * (len(self.__neurons) - 1)
-                        self.__activations.append((softmax, d_softmax))
-
+        if activations is None:
+            if self.is_clf:
+                if self.neurons[-1] == 1:
+                    self.__activations += [relu] * (len(self.__neurons) - 1)
+                    self.__activations.append(sigmoid)
                 else:
-                    # TODO: Activations for regression model
-                    ...
+                    self.__activations += [tanh] * (len(self.__neurons) - 1)
+                    self.__activations.append(softmax)
 
-            # Check activations
-            elif len(activations) != len(self.__neurons):
-                raise ValueError(f'The length of activations must be {len(self.__neurons)}.')
-
-            # Check activations' elements
             else:
-                for i, a in enumerate(activations, start=1):
-                    if len(a) != 2:
-                        raise ValueError(f'Activation function and its derivative function expected for layer {i}.')
-                    elif not (callable(a[0]) and callable(a[1])):
-                        raise ValueError(f'Activation function and its derivative function for layer {i} '
-                                         f'must be callable functions/objects.')
-                    else:
-                        self.__activations.append(a)
+                # TODO: Activations for regression model
+                ...
 
-        except TypeError:
-            raise TypeError('List of lists expected for activations.')
+        # Check activations
+        elif type(activations) is not list or not all(callable(a) for a in activations):
+            raise TypeError('List of functions or callable objects expected for activations.')
+
+        # Check activations length
+        elif len(activations) != len(self.__neurons):
+            raise ValueError(f'The length of activations must be {len(self.__neurons)}.')
+
+        else:
+            self.__activations.extend(activations)
 
     def set_params(self, n_att: int, initializer=None, weight: dict = None, bias: dict = None):
         if self.__costs:
@@ -149,19 +141,20 @@ class NeuralNetwork:
                 except AssertionError:
                     raise ValueError(f'Array of bias for layer {l} must have the size of {(1, dims)} or {(dims,)}.')
 
-    def set_loss(self, loss=None, d_loss=None):
-        if loss is None and d_loss is None:
+    def set_loss(self, loss=None):
+        if loss is None:
             if self.is_clf:
                 if self.neurons[-1] == 1:
-                    self.__loss = (log_loss, d_log_loss)
+                    self.__loss = log_loss
                 else:
-                    self.__loss = (cross_entropy_loss, d_cross_entropy_loss)
+                    self.__loss = cross_entropy_loss
 
             else:
-                self.__loss = (quadratic_loss, d_quadratic_loss)
+                self.__loss = quadratic_loss
 
-        elif callable(loss) and callable(d_loss):
-            self.__loss = (loss, d_loss)
+        elif callable(loss):
+            self.__loss = loss
+
         else:
             raise ValueError('function and function_derivative must be callable functions/objects.')
 
@@ -215,12 +208,12 @@ class NeuralNetwork:
 
             Z = A_prev @ self.parameters[f'W{l}'] + self.parameters[f'b{l}']
             cache.append((A_prev, Z) if D is None else (A_prev, Z, D))
-            A_prev = self.__activations[l-1][0](Z)
+            A_prev = self.__activations[l-1](Z)
 
         return A_prev, cache
 
     def compute_cost(self, y_pred, y_true, lambd=.0):
-        cost = self.__loss[0](y_pred, y_true).mean()
+        cost = self.__loss(y_pred, y_true).mean()
 
         # L2 regularization
         if lambd:
@@ -237,7 +230,7 @@ class NeuralNetwork:
             A_prev, Z, *D = cache[l-1]
 
             # Derivative of activation functions
-            dZ = self.activations[l-1][1](Z) * dA
+            dZ = self.activations[l-1](Z, derivative=True) * dA
 
             # Derivative of A_prev
             if l != 1:
@@ -334,7 +327,7 @@ class NeuralNetwork:
 
                 # Backward propagation
                 # dA = self.__loss[1](y_pred, mini_y)
-                self.backward_pass(self.__loss[1](y_pred, mini_y), cache, lambd)
+                self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, lambd)
 
                 # Update parameters
                 self.update_parameters(learning_rate)
@@ -374,7 +367,7 @@ class NeuralNetwork:
         # Forward pass
         for l in range(1, self.size):
             Z = A_prev @ self.parameters[f'W{l}'] + self.parameters[f'b{l}']
-            A_prev = self.activations[l-1][0](Z)
+            A_prev = self.activations[l-1](Z)
 
         # Prediction
         if self.is_clf:
@@ -437,7 +430,7 @@ class NeuralNetwork:
                 param.flat[i] = tmp_param
 
         # Backward propagation
-        self.backward_pass(self.__loss[1](y_pred, y), cache, lambd)
+        self.backward_pass(self.__loss(y_pred, y, derivative=True), cache, lambd)
         grad = tuple(self.__gradients['d'+key].ravel() for key in self.__parameters)
         grad = np.concatenate(grad)
 

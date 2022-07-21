@@ -19,7 +19,7 @@ class NeuralNetwork:
         self.__parameters = {}
         self.__gradients = {}
         self.__activations = []
-        self.__loss = (log_loss, d_log_loss)
+        self.__loss = None
         self.__labels = None  # The classes labels
         self.__costs = []  # For debugging
 
@@ -64,6 +64,7 @@ class NeuralNetwork:
                     else:
                         self.__activations += [(np.tanh, d_tanh)] * (len(self.__neurons) - 1)
                         self.__activations.append((softmax, d_softmax))
+
                 else:
                     # TODO: Activations for regression model
                     ...
@@ -148,9 +149,19 @@ class NeuralNetwork:
                 except AssertionError:
                     raise ValueError(f'Array of bias for layer {l} must have the size of {(1, dims)} or {(dims,)}.')
 
-    def set_loss(self, function, function_derivative):
-        if callable(function) and callable(function_derivative):
-            self.__loss = (function, function_derivative)
+    def set_loss(self, loss=None, d_loss=None):
+        if loss is None and d_loss is None:
+            if self.is_clf:
+                if self.neurons[-1] == 1:
+                    self.__loss = (log_loss, d_log_loss)
+                else:
+                    self.__loss = (cross_entropy_loss, d_cross_entropy_loss)
+
+            else:
+                self.__loss = (quadratic_loss, d_quadratic_loss)
+
+        elif callable(loss) and callable(d_loss):
+            self.__loss = (loss, d_loss)
         else:
             raise ValueError('function and function_derivative must be callable functions/objects.')
 
@@ -298,8 +309,7 @@ class NeuralNetwork:
 
         # Initialize loss function
         if self.__loss is None:
-            # self.set_loss()
-            pass
+            self.set_loss()
 
         start_time = perf_counter()
 
@@ -404,7 +414,7 @@ class NeuralNetwork:
         # Initialize loss function
         if self.__loss is None:
             backup['loss'] = True
-            # self.set_loss()
+            self.set_loss()
 
         # Forward propagation
         y_pred, cache = self.forward_pass(X)

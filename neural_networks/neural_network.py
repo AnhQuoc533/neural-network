@@ -156,7 +156,7 @@ class NeuralNetwork:
             self.__loss = loss
 
         else:
-            raise ValueError('function and function_derivative must be callable functions/objects.')
+            raise TypeError('function and function_derivative must be callable functions/objects.')
 
     @staticmethod
     def one_hot_encode(y, labels):
@@ -321,12 +321,12 @@ class NeuralNetwork:
                 # Forward propagation
                 y_pred, cache = self.forward_pass(mini_X, keep_prob)
 
-                # Compute loss
+                # Compute mini-cost
                 if i % step == 0:
                     cost += self.compute_cost(y_pred, mini_y, lambd)
 
                 # Backward propagation
-                # dA = self.__loss[1](y_pred, mini_y)
+                # dA = self.__loss(y_pred, mini_y, derivative=True)
                 self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, lambd)
 
                 # Update parameters
@@ -347,7 +347,7 @@ class NeuralNetwork:
         if plot_cost:
             plt.plot(self.__costs)
             plt.ylabel('cost')
-            plt.xlabel(f'iterations (per {step})')
+            plt.xlabel(f'epochs (per {step})')
             plt.show()
 
         return self

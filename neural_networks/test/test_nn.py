@@ -1,6 +1,6 @@
 import pytest
 import h5py
-from sklearn.datasets import make_circles
+from sklearn.datasets import make_circles, make_moons
 from ..neural_network import NeuralNetwork
 from ..activations import *
 
@@ -387,3 +387,14 @@ def test_gradient_check_3():
     assert len(model.parameters) == 0
     assert len(model.activations) == 3
     assert model.activations == activations
+
+
+def test_mini_batch():
+    train_X, train_Y = make_moons(n_samples=300, noise=.2, random_state=3)
+
+    model = NeuralNetwork([5, 2, 1], seed=3)
+    model.fit(train_X, train_Y, learning_rate=0.0007, epochs=5000, step=1000, batch_size=64, shuffle=True)
+
+    assert pytest.approx(model.costs) == [0.7588353088246047, 0.5977185220351452, 0.5316795298099085,
+                                          0.49401085257243593, 0.4635011585260269]
+    assert pytest.approx(model.accuracy_score(train_X, train_Y)) == 0.8066666666666666

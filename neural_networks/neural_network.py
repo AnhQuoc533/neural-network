@@ -17,11 +17,13 @@ class NeuralNetwork:
         self.is_clf = is_clf
 
         self.__parameters = {}
-        self.__gradients = {}
         self.__activations = []
         self.__loss = None
         self.__labels = None  # The classes labels
         self.__costs = []  # For debugging
+
+        self.beta_1 = 0.9  # Momentum
+        self.beta_2 = 0.999
 
     @property
     def neurons(self):
@@ -224,7 +226,7 @@ class NeuralNetwork:
 
         return cost
 
-    def backward_pass(self, dA, cache, lambd=.0):
+    def backward_pass(self, dA, cache, gradients: dict, lambd=.0):
         m = len(dA)
         for l in range(len(self.__neurons), 0, -1):
             A_prev, Z, *D = cache[l-1]
@@ -240,15 +242,24 @@ class NeuralNetwork:
                     dA *= D[0]
 
             if lambd:
-                self.__gradients[f'dW{l}'] = (A_prev.T @ dZ + lambd * self.parameters[f'W{l}']) / m
+                gradients[f'dW{l}'] = (A_prev.T @ dZ + lambd * self.parameters[f'W{l}']) / m
             else:
-                self.__gradients[f'dW{l}'] = (A_prev.T @ dZ) / m
-            self.__gradients[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
+                gradients[f'dW{l}'] = (A_prev.T @ dZ) / m
+            gradients[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
 
-    def update_parameters(self, learning_rate: float):
+    def update_parameters(self, learning_rate: float, gradients: dict, v: dict = None):
         for l in range(len(self.neurons), 0, -1):
-            self.__parameters[f'W{l}'] -= learning_rate * self.__gradients[f'dW{l}']
-            self.__parameters[f'b{l}'] -= learning_rate * self.__gradients[f'db{l}']
+            # Momentum
+            if v is not None:
+                v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradients[f'dW{l}']
+                v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradients[f'db{l}']
+                self.__parameters[f'W{l}'] -= learning_rate * v[f'dW{l}']
+                self.__parameters[f'b{l}'] -= learning_rate * v[f'db{l}']
+
+            # Standard
+            else:
+                self.__parameters[f'W{l}'] -= learning_rate * gradients[f'dW{l}']
+                self.__parameters[f'b{l}'] -= learning_rate * gradients[f'db{l}']
 
     def fit(self,
             X,
@@ -263,6 +274,7 @@ class NeuralNetwork:
             keep_prob=None,
             batch_size: int = None,
             shuffle=False,
+            momentum=False,
             decay_rate=0):
 
         # Check X, y
@@ -284,9 +296,7 @@ class NeuralNetwork:
             elif not all(type(p) is float and 0 <= p <= 1 for p in keep_prob):
                 raise ValueError(f'Each element in keep_prob must be a float number and in the range 0 - 1.')
 
-        # Check other parameters
-        self.__costs = []
-
+        # Check batch_size
         if batch_size is None:
             batch_size = len(X)
         elif batch_size > len(X):
@@ -306,6 +316,11 @@ class NeuralNetwork:
         # Initialize loss function
         if self.__loss is None:
             self.set_loss()
+
+        # Initialize supporting variables
+        self.__costs = []
+        gradients = {}
+        v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()} if momentum else None
 
         start_time = perf_counter()
 
@@ -330,10 +345,10 @@ class NeuralNetwork:
 
                 # Backward propagation
                 # dA = self.__loss(y_pred, mini_y, derivative=True)
-                self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, lambd)
+                self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, gradients, lambd)
 
                 # Update parameters
-                self.update_parameters(learning_rate)
+                self.update_parameters(learning_rate, gradients, v)
 
             # Compute and print cost
             if i % step == 0:
@@ -433,8 +448,9 @@ class NeuralNetwork:
                 param.flat[i] = tmp_param
 
         # Backward propagation
-        self.backward_pass(self.__loss(y_pred, y, derivative=True), cache, lambd)
-        grad = tuple(self.__gradients['d'+key].ravel() for key in self.__parameters)
+        gradients = {}
+        self.backward_pass(self.__loss(y_pred, y, derivative=True), cache, gradients, lambd)
+        grad = tuple(gradients['d'+key].ravel() for key in self.__parameters)
         grad = np.concatenate(grad)
 
         # Reset

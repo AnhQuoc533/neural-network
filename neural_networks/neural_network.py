@@ -239,7 +239,10 @@ class NeuralNetwork:
                 if D:
                     dA *= D[0]
 
-            self.__gradients[f'dW{l}'] = (A_prev.T @ dZ + lambd * self.parameters[f'W{l}']) / m
+            if lambd:
+                self.__gradients[f'dW{l}'] = (A_prev.T @ dZ + lambd * self.parameters[f'W{l}']) / m
+            else:
+                self.__gradients[f'dW{l}'] = (A_prev.T @ dZ) / m
             self.__gradients[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
 
     def update_parameters(self, learning_rate: float):

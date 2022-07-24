@@ -5,7 +5,9 @@ from .activations import relu, sigmoid, tanh, softmax
 
 
 class NeuralNetwork:
-    __epsilon = 1e-8
+    epsilon = 1e-8
+    beta_1 = 0.9  # Momentum
+    beta_2 = 0.999  # RMSprop
 
     def __init__(self, neurons: list[int], is_clf=True, seed: float = None):
 
@@ -21,9 +23,6 @@ class NeuralNetwork:
         self.__loss = None
         self.__labels = None  # The classes labels
         self.__costs = []  # For debugging
-
-        self.beta_1 = 0.9  # Momentum
-        self.beta_2 = 0.999
 
     @property
     def neurons(self):
@@ -146,11 +145,7 @@ class NeuralNetwork:
     def set_loss(self, loss=None):
         if loss is None:
             if self.is_clf:
-                if self.neurons[-1] == 1:
-                    self.__loss = log_loss
-                else:
-                    self.__loss = cross_entropy_loss
-
+                self.__loss = log_loss if self.neurons[-1] == 1 else cross_entropy_loss
             else:
                 self.__loss = quadratic_loss
 
@@ -196,6 +191,28 @@ class NeuralNetwork:
 
         return X, y
 
+    def __init_optimizer(self, optimizer: str = None):
+        v = s = None
+        f = self.standard_update
+
+        if optimizer not in {None, 'momentum', 'adam', 'rmsprop', 'adagrad'}:
+            raise ValueError("optimizer must be one of 'momentum', 'adam', 'rmsprop', 'adagrad'.")
+
+        elif optimizer == 'momentum':
+            v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
+            def f(alpha, grad): self.momentum_update(alpha, grad, v=v)
+
+        elif optimizer == 'rmsprop':
+            s = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
+            def f(alpha, grad): self.rmsprop_update(alpha, grad, s=s)
+
+        elif optimizer == 'adam':
+            v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
+            s = {key: np.zeros(value.shape) for key, value in v.items()}
+            def f(alpha, grad): self.adam_update(alpha, grad, v=v, s=s)
+
+        return v, s, f
+
     def forward_pass(self, X, keep_prob: list = None):
         cache = []
         A_prev = X
@@ -226,7 +243,7 @@ class NeuralNetwork:
 
         return cost
 
-    def backward_pass(self, dA, cache, gradients: dict, lambd=.0):
+    def backward_pass(self, dA, cache, gradient: dict, lambd=.0):
         m = len(dA)
         for l in range(len(self.__neurons), 0, -1):
             A_prev, Z, *D = cache[l-1]
@@ -242,24 +259,42 @@ class NeuralNetwork:
                     dA *= D[0]
 
             if lambd:
-                gradients[f'dW{l}'] = (A_prev.T @ dZ + lambd * self.parameters[f'W{l}']) / m
+                gradient[f'dW{l}'] = (A_prev.T @ dZ + lambd * self.parameters[f'W{l}']) / m
             else:
-                gradients[f'dW{l}'] = (A_prev.T @ dZ) / m
-            gradients[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
+                gradient[f'dW{l}'] = (A_prev.T @ dZ) / m
+            gradient[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
 
-    def update_parameters(self, learning_rate: float, gradients: dict, v: dict = None):
+    def momentum_update(self, learning_rate: float, gradient: dict, v: dict):
         for l in range(len(self.neurons), 0, -1):
-            # Momentum
-            if v is not None:
-                v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradients[f'dW{l}']
-                v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradients[f'db{l}']
-                self.__parameters[f'W{l}'] -= learning_rate * v[f'dW{l}']
-                self.__parameters[f'b{l}'] -= learning_rate * v[f'db{l}']
+            v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
+            v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
 
-            # Standard
-            else:
-                self.__parameters[f'W{l}'] -= learning_rate * gradients[f'dW{l}']
-                self.__parameters[f'b{l}'] -= learning_rate * gradients[f'db{l}']
+            self.__parameters[f'W{l}'] -= learning_rate * v[f'dW{l}']
+            self.__parameters[f'b{l}'] -= learning_rate * v[f'db{l}']
+
+    def rmsprop_update(self, learning_rate: float, gradient: dict, s: dict):
+        for l in range(len(self.neurons), 0, -1):
+            s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}']**2
+            s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}']**2
+
+            self.__parameters[f'W{l}'] -= learning_rate * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + self.epsilon)
+            self.__parameters[f'b{l}'] -= learning_rate * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.epsilon)
+
+    def adam_update(self, learning_rate: float, gradient: dict, v: dict, s: dict):
+        for l in range(len(self.neurons), 0, -1):
+            v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
+            v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
+
+            s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}'] ** 2
+            s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}'] ** 2
+
+            self.__parameters[f'W{l}'] -= learning_rate * v[f'dW{l}']
+            self.__parameters[f'b{l}'] -= learning_rate * v[f'db{l}']
+
+    def standard_update(self, learning_rate: float, gradient: dict):
+        for l in range(len(self.neurons), 0, -1):
+            self.__parameters[f'W{l}'] -= learning_rate * gradient[f'dW{l}']
+            self.__parameters[f'b{l}'] -= learning_rate * gradient[f'db{l}']
 
     def fit(self,
             X,
@@ -274,7 +309,7 @@ class NeuralNetwork:
             keep_prob=None,
             batch_size: int = None,
             shuffle=False,
-            momentum=False,
+            optimizer: str = None,
             decay_rate=0):
 
         # Check X, y
@@ -317,13 +352,14 @@ class NeuralNetwork:
         if self.__loss is None:
             self.set_loss()
 
+        # Initialize optimizer
+        v, s, update_parameters = self.__init_optimizer(optimizer)
+
         # Initialize supporting variables
         self.__costs = []
-        gradients = {}
-        v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()} if momentum else None
+        gradient = {}
 
         start_time = perf_counter()
-
         for i in range(epochs):
             cost = .0
             if shuffle:
@@ -345,10 +381,10 @@ class NeuralNetwork:
 
                 # Backward propagation
                 # dA = self.__loss(y_pred, mini_y, derivative=True)
-                self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, gradients, lambd)
+                self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, gradient, lambd)
 
                 # Update parameters
-                self.update_parameters(learning_rate, gradients, v)
+                update_parameters(learning_rate, gradient)
 
             # Compute and print cost
             if i % step == 0:
@@ -356,7 +392,6 @@ class NeuralNetwork:
                 self.__costs.append(cost)
                 if verbose:
                     print(f"Cost after epoch {i:{len(str(epochs))}}: {cost}")
-
         end_time = perf_counter()
 
         if verbose:

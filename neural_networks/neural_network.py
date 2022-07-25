@@ -6,8 +6,6 @@ from .activations import relu, sigmoid, tanh, softmax
 
 class NeuralNetwork:
     epsilon = 1e-8
-    beta_1 = 0.9  # Momentum
-    beta_2 = 0.999  # RMSprop
 
     def __init__(self, neurons: list[int], is_clf=True, seed: float = None):
 
@@ -23,6 +21,9 @@ class NeuralNetwork:
         self.__loss = None
         self.__labels = None  # The classes labels
         self.__costs = []  # For debugging
+
+        self.beta_1 = 0.9  # Momentum
+        self.beta_2 = 0.999  # RMSprop
 
     @property
     def neurons(self):
@@ -80,7 +81,7 @@ class NeuralNetwork:
         else:
             self.__activations.extend(activations)
 
-    def set_params(self, n_att: int, initializer=None, weight: dict = None, bias: dict = None):
+    def set_params(self, n_att: int, initializer: str = None, weight: dict = None, bias: dict = None):
         if self.__costs:
             raise ValueError('Cannot change parameters after fitting the instance.')
         if n_att < 1:
@@ -193,23 +194,23 @@ class NeuralNetwork:
 
     def __init_optimizer(self, optimizer: str = None):
         v = s = None
-        f = self.standard_update
+        def f(alpha, grad, t): self.standard_update(alpha, grad)
 
         if optimizer not in {None, 'momentum', 'adam', 'rmsprop', 'adagrad'}:
             raise ValueError("optimizer must be one of 'momentum', 'adam', 'rmsprop', 'adagrad'.")
 
         elif optimizer == 'momentum':
             v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
-            def f(alpha, grad): self.momentum_update(alpha, grad, v=v)
+            def f(alpha, grad, t): self.momentum_update(alpha, grad, v)
 
         elif optimizer == 'rmsprop':
             s = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
-            def f(alpha, grad): self.rmsprop_update(alpha, grad, s=s)
+            def f(alpha, grad, t): self.rmsprop_update(alpha, grad, s)
 
         elif optimizer == 'adam':
             v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
             s = {key: np.zeros(value.shape) for key, value in v.items()}
-            def f(alpha, grad): self.adam_update(alpha, grad, v=v, s=s)
+            def f(alpha, grad, t): self.adam_update(alpha, grad, v, s, t)
 
         return v, s, f
 
@@ -264,37 +265,40 @@ class NeuralNetwork:
                 gradient[f'dW{l}'] = (A_prev.T @ dZ) / m
             gradient[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
 
-    def momentum_update(self, learning_rate: float, gradient: dict, v: dict):
+    def momentum_update(self, lr: float, gradient: dict, v: dict):
         for l in range(len(self.neurons), 0, -1):
             v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
             v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
 
-            self.__parameters[f'W{l}'] -= learning_rate * v[f'dW{l}']
-            self.__parameters[f'b{l}'] -= learning_rate * v[f'db{l}']
+            self.__parameters[f'W{l}'] -= lr * v[f'dW{l}']
+            self.__parameters[f'b{l}'] -= lr * v[f'db{l}']
 
-    def rmsprop_update(self, learning_rate: float, gradient: dict, s: dict):
+    def rmsprop_update(self, lr: float, gradient: dict, s: dict):
         for l in range(len(self.neurons), 0, -1):
             s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}']**2
             s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}']**2
 
-            self.__parameters[f'W{l}'] -= learning_rate * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + self.epsilon)
-            self.__parameters[f'b{l}'] -= learning_rate * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.epsilon)
+            self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + self.epsilon)
+            self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.epsilon)
 
-    def adam_update(self, learning_rate: float, gradient: dict, v: dict, s: dict):
+    def adam_update(self, lr: float, gradient: dict, v: dict, s: dict, t: int):
         for l in range(len(self.neurons), 0, -1):
             v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
             v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
 
-            s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}'] ** 2
-            s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}'] ** 2
+            s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}']**2
+            s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}']**2
 
-            self.__parameters[f'W{l}'] -= learning_rate * v[f'dW{l}']
-            self.__parameters[f'b{l}'] -= learning_rate * v[f'db{l}']
+            v_correct = 1 - self.beta_1**t
+            s_correct = (1 - self.beta_2**t)**0.5
 
-    def standard_update(self, learning_rate: float, gradient: dict):
+            self.__parameters[f'W{l}'] -= lr * v[f'dW{l}'] * s_correct / (v_correct * np.sqrt(s[f'dW{l}']) + self.epsilon)
+            self.__parameters[f'b{l}'] -= lr * v[f'db{l}'] * s_correct / (v_correct * np.sqrt(s[f'db{l}']) + self.epsilon)
+
+    def standard_update(self, lr: float, gradient: dict):
         for l in range(len(self.neurons), 0, -1):
-            self.__parameters[f'W{l}'] -= learning_rate * gradient[f'dW{l}']
-            self.__parameters[f'b{l}'] -= learning_rate * gradient[f'db{l}']
+            self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}']
+            self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}']
 
     def fit(self,
             X,
@@ -384,7 +388,7 @@ class NeuralNetwork:
                 self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, gradient, lambd)
 
                 # Update parameters
-                update_parameters(learning_rate, gradient)
+                update_parameters(learning_rate, gradient, t)
 
             # Compute and print cost
             if i % step == 0:

@@ -52,3 +52,17 @@ def softmax(x, derivative=False):
 
     except TypeError:
         raise TypeError('A numpy array expected for x.')
+
+
+def gelu(x, derivative=False):
+    try:
+        def erf(x_):
+            """Return the approximation of Gauss error function of x_ / sqrt(x)."""
+            return np.tanh((2/np.pi)**0.5 * (x_ + 0.0044715*x_**3))
+
+        if derivative:
+            return 0.5 * (erf(x)+1) + (x*np.exp(-x**2/2)) / (2*np.pi)**0.5
+        return x/2 * (1 + erf(x))
+
+    except TypeError:
+        raise TypeError('A numpy array expected for x.')

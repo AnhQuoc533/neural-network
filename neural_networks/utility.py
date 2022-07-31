@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_decision_boundary(model, X, y):
+def plot_decision_boundary(model, X: np.ndarray, y: np.ndarray):
+    X = X[:, :2]
+
     # Set min and max values and give it some padding
     x_min, y_min = X.min(axis=0) - 1
     x_max, y_max = X.max(axis=0) + 1

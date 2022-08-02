@@ -1,6 +1,7 @@
 # https://packaging.python.org/en/latest/tutorials/packaging-projects/
 from setuptools import setup
 import pathlib
+import neural_networks
 
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
@@ -9,7 +10,7 @@ HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 
 setup(name='neural-networks',
-      version='0.1.0',
+      version=neural_networks.__version__,
       description='Basic neural networks package.',
       long_description=README,
       long_description_content_type="text/markdown",

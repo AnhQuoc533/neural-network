@@ -5,7 +5,7 @@ from .activations import relu, sigmoid, tanh, softmax
 
 
 class NeuralNetwork:
-    epsilon = 1e-8
+    epsilon = 1e-8  # Adam
 
     def __init__(self, neurons: list[int], is_clf=True, seed: float = None):
 
@@ -193,11 +193,8 @@ class NeuralNetwork:
         return X, y
 
     def __init_optimizer(self, optimizer: str = None):
-        v = s = None
-        def f(alpha, grad, t): self.standard_update(alpha, grad)
-
-        if optimizer not in {None, 'momentum', 'adam', 'rmsprop', 'adagrad'}:
-            raise ValueError("optimizer must be one of 'momentum', 'adam', 'rmsprop', 'adagrad'.")
+        if optimizer is None:
+            def f(alpha, grad, t): self.standard_update(alpha, grad)
 
         elif optimizer == 'momentum':
             v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
@@ -212,7 +209,10 @@ class NeuralNetwork:
             s = {key: np.zeros(value.shape) for key, value in v.items()}
             def f(alpha, grad, t): self.adam_update(alpha, grad, v, s, t)
 
-        return v, s, f
+        else:
+            raise ValueError("optimizer must be one of 'momentum', 'adam', 'rmsprop', 'adagrad' or None.")
+
+        return f
 
     def forward_pass(self, X, keep_prob: list = None):
         cache = []
@@ -228,28 +228,28 @@ class NeuralNetwork:
 
             Z = A_prev @ self.parameters[f'W{l}'] + self.parameters[f'b{l}']
             cache.append((A_prev, Z) if D is None else (A_prev, Z, D))
-            A_prev = self.__activations[l-1](Z)
+            A_prev = self.activations[l-1](Z)
 
         return A_prev, cache
 
     def compute_cost(self, y_pred, y_true, lambd=.0):
-        cost = self.__loss(y_pred, y_true).mean()
+        cost = self.loss(y_pred, y_true).mean()
 
         # L2 regularization
         if lambd:
             reg = .0
             for l in range(1, self.size):
-                reg += (self.__parameters[f'W{l}']**2).sum()
+                reg += (self.parameters[f'W{l}']**2).sum()
             cost += lambd / (2 * len(y_true)) * reg
 
         return cost
 
     def backward_pass(self, dA, cache, gradient: dict, lambd=.0):
         m = len(dA)
-        for l in range(len(self.__neurons), 0, -1):
+        for l in range(len(self.neurons), 0, -1):
             A_prev, Z, *D = cache[l-1]
 
-            # Derivative of activation functions
+            # Derivative of activation function
             dZ = self.activations[l-1](Z, derivative=True) * dA
 
             # Derivative of A_prev
@@ -266,7 +266,7 @@ class NeuralNetwork:
             gradient[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
 
     def momentum_update(self, lr: float, gradient: dict, v: dict):
-        for l in range(len(self.neurons), 0, -1):
+        for l in range(1, self.size):
             v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
             v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
 
@@ -274,7 +274,7 @@ class NeuralNetwork:
             self.__parameters[f'b{l}'] -= lr * v[f'db{l}']
 
     def rmsprop_update(self, lr: float, gradient: dict, s: dict):
-        for l in range(len(self.neurons), 0, -1):
+        for l in range(1, self.size):
             s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}']**2
             s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}']**2
 
@@ -282,7 +282,7 @@ class NeuralNetwork:
             self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.epsilon)
 
     def adam_update(self, lr: float, gradient: dict, v: dict, s: dict, t: int):
-        for l in range(len(self.neurons), 0, -1):
+        for l in range(1, self.size):
             v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
             v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
 
@@ -290,31 +290,33 @@ class NeuralNetwork:
             s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}']**2
 
             v_correct = 1 - self.beta_1**t
-            s_correct = (1 - self.beta_2**t)**0.5
+            s_correct = 1 - self.beta_2**t
 
-            self.__parameters[f'W{l}'] -= lr * v[f'dW{l}'] * s_correct / (v_correct * np.sqrt(s[f'dW{l}']) + self.epsilon)
-            self.__parameters[f'b{l}'] -= lr * v[f'db{l}'] * s_correct / (v_correct * np.sqrt(s[f'db{l}']) + self.epsilon)
+            self.__parameters[f'W{l}'] -= lr * (v[f'dW{l}']/v_correct) / (np.sqrt(s[f'dW{l}']/s_correct) + self.epsilon)
+            self.__parameters[f'b{l}'] -= lr * (v[f'db{l}']/v_correct) / (np.sqrt(s[f'db{l}']/s_correct) + self.epsilon)
 
     def standard_update(self, lr: float, gradient: dict):
         for l in range(len(self.neurons), 0, -1):
             self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}']
             self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}']
 
-    def fit(self,
-            X,
-            y,
-            learning_rate: float,
-            epochs: int,
-            verbose=False,
-            plot_cost=False,
-            step=100,
-            labels: list = None,
-            lambd=.0,
-            keep_prob=None,
-            batch_size: int = None,
-            shuffle=False,
-            optimizer: str = None,
-            decay_rate=0):
+    def fit(
+        self,
+        X,
+        y,
+        learning_rate: float,
+        epochs: int,
+        verbose=False,
+        plot_cost=False,
+        step=100,
+        labels: list = None,
+        lambd=.0,
+        keep_prob=None,
+        batch_size: int = None,
+        shuffle=False,
+        optimizer: str = None,
+        decay_rate=0
+    ):
 
         # Check X, y
         self.__labels = labels
@@ -345,23 +347,24 @@ class NeuralNetwork:
         n_batches = (m // batch_size + 1) if m % batch_size else (m // batch_size)
 
         # Initialize weights and biases
-        if not self.__parameters:
+        if not self.parameters:
             self.set_params(X.shape[1], 'he' if self.neurons[-1] == 1 else 'xavier')
 
         # Initialize activation functions
-        if not self.__activations:
+        if not self.activations:
             self.set_activations()
 
         # Initialize loss function
-        if self.__loss is None:
+        if self.loss is None:
             self.set_loss()
 
         # Initialize optimizer
-        v, s, update_parameters = self.__init_optimizer(optimizer)
+        update_parameters = self.__init_optimizer(optimizer)
 
         # Initialize supporting variables
         self.__costs = []
         gradient = {}
+        t = 0
 
         start_time = perf_counter()
         for i in range(epochs):
@@ -371,10 +374,10 @@ class NeuralNetwork:
                 X = X[new_id]
                 y = y[new_id]
 
-            for t in range(n_batches):
+            for b in range(n_batches):
                 # Partition
-                mini_X = X[t*batch_size : (t+1)*batch_size]
-                mini_y = y[t*batch_size : (t+1)*batch_size]
+                mini_X = X[b*batch_size : (b+1)*batch_size]
+                mini_y = y[b*batch_size : (b+1)*batch_size]
 
                 # Forward propagation
                 y_pred, cache = self.forward_pass(mini_X, keep_prob)
@@ -384,11 +387,11 @@ class NeuralNetwork:
                     cost += self.compute_cost(y_pred, mini_y, lambd)
 
                 # Backward propagation
-                # dA = self.__loss(y_pred, mini_y, derivative=True)
-                self.backward_pass(self.__loss(y_pred, mini_y, derivative=True), cache, gradient, lambd)
+                # dA = self.loss(y_pred, mini_y, derivative=True)
+                self.backward_pass(self.loss(y_pred, mini_y, derivative=True), cache, gradient, lambd)
 
                 # Update parameters
-                update_parameters(learning_rate, gradient, t)
+                update_parameters(learning_rate, gradient, t := t+1)
 
             # Compute and print cost
             if i % step == 0:
@@ -399,7 +402,7 @@ class NeuralNetwork:
         end_time = perf_counter()
 
         if verbose:
-            print("\nTime taken:", end_time - start_time)
+            print("\nTime elapsed:", end_time - start_time, 'seconds.')
 
         if plot_cost:
             plt.plot(self.__costs)
@@ -411,7 +414,7 @@ class NeuralNetwork:
 
     def predict(self, X):
         # Check X
-        if not self.__costs:
+        if not self.costs:
             raise ValueError('Fit the training data to the instance first.')
 
         A_prev = np.asarray(X, dtype=np.float64)

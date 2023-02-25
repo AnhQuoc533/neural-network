@@ -1,6 +1,8 @@
 import pytest
 import h5py
 from sklearn.datasets import make_circles, make_moons
+import matplotlib.pyplot as plt
+from ..utility import plot_decision_boundary
 from ..neural_network import NeuralNetwork
 from ..activations import *
 
@@ -129,7 +131,7 @@ def test_deep_nn_1():
     weight = initialize_parameters([train_set_x.shape[1], 20, 7, 5, 1])
     model.set_params(train_set_x.shape[1], weight=weight)
 
-    model.fit(train_set_x, train_set_y, learning_rate=0.0075, epochs=2500, step=100)
+    model.fit(train_set_x, train_set_y, learning_rate=0.0075, epochs=2500, step=100, verbose=1)
 
     # Check the costs
     assert pytest.approx(model.costs[0]) == 0.7717493284237686
@@ -160,7 +162,7 @@ def test_deep_nn_2():
     # axes.set_ylim([-0.75, 0.65])
 
     # plt.title("Model without regularization")
-    # plot_decision_boundary(model.predict, train_x, train_y)
+    # plot_decision_boundary(model, train_x, train_y)
 
     # Check the costs
     assert pytest.approx(model.costs) == [0.6557412523481002, 0.1632998752572421, 0.13851642423244123]
@@ -185,7 +187,7 @@ def test_L2_regularization():
     # axes.set_ylim([-0.75, 0.65])
 
     # plt.title("Model with L2 regularization")
-    # plot_decision_boundary(model.predict, train_x, train_y)
+    # plot_decision_boundary(model, train_x, train_y)
 
     # Check the costs
     assert pytest.approx(model.costs) == [0.6974484493131264, 0.2684918873282238, 0.2680916337127302]
@@ -230,9 +232,9 @@ def test_dropout():
     # axes = plt.gca()
     # axes.set_xlim([-0.75, 0.40])
     # axes.set_ylim([-0.75, 0.65])
-
+    #
     # plt.title("Model with dropout")
-    # plot_decision_boundary(model.predict, train_x, train_y)
+    # plot_decision_boundary(model, train_x, train_y)
 
     # Check the costs
     assert pytest.approx(model.costs) == [0.6585998432035588, 0.20187690743859132, 0.15421839870569154]
@@ -392,9 +394,23 @@ def test_gradient_check_3():
 def test_mini_batch():
     train_X, train_Y = make_moons(n_samples=300, noise=.2, random_state=3)
 
-    model = NeuralNetwork([5, 2, 1], seed=3)
+    model = NeuralNetwork([5, 2, 1])
+    w = initialize_parameters([train_X.shape[1], 5, 2, 1], seeds=3)
+    model.set_params(train_X.shape[1], weight=w)
     model.fit(train_X, train_Y, learning_rate=0.0007, epochs=5000, step=1000, batch_size=64, shuffle=True)
 
-    assert pytest.approx(model.costs) == [0.7588353088246047, 0.5977185220351452, 0.5316795298099085,
-                                          0.49401085257243593, 0.4635011585260269]
-    assert pytest.approx(model.accuracy_score(train_X, train_Y)) == 0.8066666666666666
+    assert pytest.approx(model.costs) == [0.7024046849828726, 0.66810064295887, 0.6352875703390979,
+                                          0.600491198436302, 0.5733672256957693]
+    assert pytest.approx(model.accuracy_score(train_X, train_Y)) == 0.7166666666666667
+
+
+def test_optimizer():
+    X, y = make_moons(n_samples=300, noise=.2, random_state=3)
+
+    model = NeuralNetwork([5, 2, 1])
+    model.set_params(X.shape[1], weight=initialize_parameters([X.shape[1], 5, 2, 1], seeds=3))
+    model.fit(X, y, learning_rate=.0007, epochs=5000, step=1000, batch_size=64, shuffle=True, optimizer='adam')
+
+    assert pytest.approx(model.costs) == [0.7021655222604548, 0.16784505282581158, 0.14131619792956468,
+                                          0.1387878350098587, 0.13606616153974382]
+    assert pytest.approx(model.accuracy_score(X, y)) == 0.9433333333333334

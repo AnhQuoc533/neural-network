@@ -20,7 +20,7 @@ with (HERE / "neural_network" / "__init__.py").open() as f:
 
 setup(name='neural-network',
       version=VERSION,
-      description='A Python package for building multi-layer perceptron (a basic neural network).',
+      description='A Neural Network framework for building Multi-layer Perceptron model.',
       long_description=README,
       long_description_content_type="text/markdown",
       url="https://github.com/AnhQuoc533/neural-network",

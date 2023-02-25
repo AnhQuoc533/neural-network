@@ -2,6 +2,8 @@ import numpy as np
 
 
 def log_loss(y_pred, y_true, derivative=False):
+    if type(y_pred) is not np.ndarray or type(y_true) is not np.ndarray:
+        raise TypeError('A numpy arrays expected for y_pred and y_true.')
     if y_pred.shape != y_true.shape:
         raise ValueError('y_pred and y_true must have the same size.')
     if y_pred.ndim != 2:
@@ -17,6 +19,8 @@ def log_loss(y_pred, y_true, derivative=False):
 
 
 def cross_entropy_loss(y_pred, y_true, derivative=False):
+    if type(y_pred) is not np.ndarray or type(y_true) is not np.ndarray:
+        raise TypeError('A numpy arrays expected for y_pred and y_true.')
     if y_pred.shape != y_true.shape:
         raise ValueError('y_pred and y_true must have the same size.')
     if y_pred.ndim != 2:
@@ -33,6 +37,8 @@ def cross_entropy_loss(y_pred, y_true, derivative=False):
 
 
 def quadratic_loss(y_pred, y_true, derivative=False):
+    if type(y_pred) is not np.ndarray or type(y_true) is not np.ndarray:
+        raise TypeError('A numpy arrays expected for y_pred and y_true.')
     if y_pred.shape != y_true.shape:
         raise ValueError('y_pred and y_true must have the same size.')
     if y_pred.ndim != 2:

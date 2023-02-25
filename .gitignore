@@ -1,4 +1,5 @@
 .pytest_cache/
 .idea/
+neural_network.egg-info/
 neural_network/__pycache__/
 neural_network/test/__pycache__/

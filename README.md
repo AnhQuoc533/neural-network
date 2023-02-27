@@ -1,4 +1,4 @@
-# neural-network
+#<center>neural-network</center>
 
 ---
 **neural-network** is a Python package that provides a Multi-Layer Perceptron (MLP) 
@@ -106,10 +106,14 @@ All above functions have 3 parameters:
 * `derivative`: A boolean value indicating whether the function computes the derivative. Default is False.
 
 ### 2D Decision Boundary Plotting
+This utility function is used for illustrative purpose. It takes a trained binary classification model, 
+a 2D NumPy input data with 2 attributes, and the corresponding binary label data as input. \
+The input model is not necessarily an instance of **NeuralNetwork**, but it must have `predict`
+method that accepts a 2D NumPy array as input.
 ```python
 plot_decision_boundary(model, train_x, train_y)
 ```
-<img src="img/Figure_1.png">
+<center><img src="img/Figure_1.png"></center>
 
 ## License
 This project is licensed under the MIT License, as found in the [LICENSE](LICENSE) file.

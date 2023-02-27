@@ -46,3 +46,6 @@ setup(name='neural-network',
           "Source": "https://github.com/AnhQuoc533/neural-network",
       },
       )
+
+# py setup.py sdist bdist_wheel
+# twine upload dist/*

@@ -6,7 +6,7 @@ framework built using only **NumPy**. The framework supports Gradient Descent, M
 
 ## Installation
 
-###Dependencies
+### Dependencies
 The package requires:
 * Python (>= 3.8)
 * NumPy (>= 1.22.1)
@@ -113,7 +113,9 @@ method that accepts a 2D NumPy array as input.
 ```python
 plot_decision_boundary(model, train_x, train_y)
 ```
-<center><img src="img/Figure_1.png"></center>
+<p align="center">
+  <img src="img/Figure_1.png">
+</p>
 
 ## License
 This project is licensed under the MIT License, as found in the [LICENSE](LICENSE) file.

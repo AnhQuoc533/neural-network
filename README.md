@@ -1,4 +1,4 @@
-#<center>neural-network</center>
+<h1 align="center">neural-network</h1>
 
 ---
 **neural-network** is a Python package that provides a Multi-Layer Perceptron (MLP) 

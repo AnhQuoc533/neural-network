@@ -5,7 +5,7 @@ from .activations import relu, sigmoid, tanh, softmax
 
 
 class NeuralNetwork:
-    epsilon = 1e-8  # Adam
+    __epsilon = 1e-8  # Adam
 
     def __init__(self, neurons: list[int], is_clf=True, seed: float = None):
 
@@ -22,8 +22,8 @@ class NeuralNetwork:
         self.__labels = None  # The classes labels
         self.__costs = []  # For debugging
 
-        self.beta_1 = 0.9  # Momentum
-        self.beta_2 = 0.999  # RMSprop
+        self.__beta1 = 0.9  # Momentum
+        self.__beta2 = 0.999  # RMSprop
 
     @property
     def neurons(self):
@@ -111,7 +111,7 @@ class NeuralNetwork:
         else:
             for l in range(1, self.size):
                 try:
-                    self.parameters[f'W{l}'] = np.asarray(weight[f'W{l}'], dtype=np.float64)
+                    self.parameters[f'W{l}'] = np.array(weight[f'W{l}'], dtype=np.float64)
                     assert self.parameters[f'W{l}'].shape == (layer_dims[l-1], layer_dims[l])
 
                 except KeyError:
@@ -132,7 +132,7 @@ class NeuralNetwork:
             for l in range(1, self.size):
                 dims = layer_dims[l]
                 try:
-                    self.parameters[f'b{l}'] = np.asarray(bias[f'b{l}'], dtype=np.float64)
+                    self.parameters[f'b{l}'] = np.array(bias[f'b{l}'], dtype=np.float64)
                     if self.parameters[f'b{l}'].shape in {(dims,), (dims, 1)}:
                         self.parameters[f'b{l}'].reshape((1, -1))
 
@@ -267,33 +267,33 @@ class NeuralNetwork:
 
     def momentum_update(self, lr: float, gradient: dict, v: dict):
         for l in range(1, self.size):
-            v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
-            v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
+            v[f'dW{l}'] = self.__beta1 * v[f'dW{l}'] + (1 - self.__beta1) * gradient[f'dW{l}']
+            v[f'db{l}'] = self.__beta1 * v[f'db{l}'] + (1 - self.__beta1) * gradient[f'db{l}']
 
             self.__parameters[f'W{l}'] -= lr * v[f'dW{l}']
             self.__parameters[f'b{l}'] -= lr * v[f'db{l}']
 
     def rmsprop_update(self, lr: float, gradient: dict, s: dict):
         for l in range(1, self.size):
-            s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}']**2
-            s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}']**2
+            s[f'dW{l}'] = self.__beta2 * s[f'dW{l}'] + (1 - self.__beta2) * gradient[f'dW{l}'] ** 2
+            s[f'db{l}'] = self.__beta2 * s[f'db{l}'] + (1 - self.__beta2) * gradient[f'db{l}'] ** 2
 
-            self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + self.epsilon)
-            self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.epsilon)
+            self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + self.__epsilon)
+            self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.__epsilon)
 
     def adam_update(self, lr: float, gradient: dict, v: dict, s: dict, t: int):
         for l in range(1, self.size):
-            v[f'dW{l}'] = self.beta_1 * v[f'dW{l}'] + (1 - self.beta_1) * gradient[f'dW{l}']
-            v[f'db{l}'] = self.beta_1 * v[f'db{l}'] + (1 - self.beta_1) * gradient[f'db{l}']
+            v[f'dW{l}'] = self.__beta1 * v[f'dW{l}'] + (1 - self.__beta1) * gradient[f'dW{l}']
+            v[f'db{l}'] = self.__beta1 * v[f'db{l}'] + (1 - self.__beta1) * gradient[f'db{l}']
 
-            s[f'dW{l}'] = self.beta_2 * s[f'dW{l}'] + (1 - self.beta_2) * gradient[f'dW{l}']**2
-            s[f'db{l}'] = self.beta_2 * s[f'db{l}'] + (1 - self.beta_2) * gradient[f'db{l}']**2
+            s[f'dW{l}'] = self.__beta2 * s[f'dW{l}'] + (1 - self.__beta2) * gradient[f'dW{l}'] ** 2
+            s[f'db{l}'] = self.__beta2 * s[f'db{l}'] + (1 - self.__beta2) * gradient[f'db{l}'] ** 2
 
-            v_correct = 1 - self.beta_1**t
-            s_correct = 1 - self.beta_2**t
+            v_correct = 1 - self.__beta1 ** t
+            s_correct = 1 - self.__beta2 ** t
 
-            self.__parameters[f'W{l}'] -= lr * (v[f'dW{l}']/v_correct) / (np.sqrt(s[f'dW{l}']/s_correct) + self.epsilon)
-            self.__parameters[f'b{l}'] -= lr * (v[f'db{l}']/v_correct) / (np.sqrt(s[f'db{l}']/s_correct) + self.epsilon)
+            self.__parameters[f'W{l}'] -= lr * (v[f'dW{l}']/v_correct) / (np.sqrt(s[f'dW{l}']/s_correct) + self.__epsilon)
+            self.__parameters[f'b{l}'] -= lr * (v[f'db{l}']/v_correct) / (np.sqrt(s[f'db{l}']/s_correct) + self.__epsilon)
 
     def standard_update(self, lr: float, gradient: dict):
         for l in range(len(self.neurons), 0, -1):

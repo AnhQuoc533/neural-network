@@ -48,4 +48,10 @@ setup(name='neural-network',
       )
 
 # py setup.py sdist bdist_wheel
+
+# Upload to the TestPyPi repository
+# twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+# pip install -i https://test.pypi.org/simple/ [project-name]
+
+# Command to upload to the PyPi repository
 # twine upload dist/*

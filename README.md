@@ -1,21 +1,21 @@
 <h1 align="center">neural-network</h1>
 
 ---
-**neural-network** is a Python package that provides a Multi-Layer Perceptron (MLP) 
-framework built using only **NumPy**. The framework supports Gradient Descent, Momentum, RMSprop, Adam optimizers.
+**neural-network** is a Python package on TestPyPi that provides a Multi-Layer Perceptron (MLP) framework built using only **NumPy**. The framework supports Gradient Descent, Momentum, RMSprop, Adam optimizers.
 
 ## Installation
 
 ### Dependencies
-The package requires:
-* Python (>= 3.8)
-* NumPy (>= 1.22.1)
-* matplotlib (>= 3.5.1 )
+```
+python>= 3.8
+numpy>= 1.22.1
+matplotlib>= 3.5.1 
+```
 
 ### User installation
 You can install neural-network using `pip`:
 ```
-pip install neural-network
+pip install -i https://test.pypi.org/simple/neural-network
 ```
 
 ## Simple Usage

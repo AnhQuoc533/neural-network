@@ -30,7 +30,6 @@ test_set_x = test_set_x / 255
 # Data for optimizer tests
 moons_X, moons_y = make_moons(n_samples=300, noise=.2, random_state=3)
 
-
 def load_planar_dataset():
     np.random.seed(1)
     m = 400  # number of examples
@@ -94,7 +93,7 @@ def test_shallow_nn_1():
     assert pytest.approx(model.costs[2]) == 0.25438549407324607
 
     assert pytest.approx(model.costs[-2]) == 0.21941059586119502
-    assert pytest.approx(model.costs[-1]) == 0.2185455332506888
+    assert pytest.approx(model.costs[-1]) == 0.2185455332506888549
 
     # Check accuracy score
     assert model.accuracy_score(X, Y) == 0.9075

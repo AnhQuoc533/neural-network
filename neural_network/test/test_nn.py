@@ -30,6 +30,7 @@ test_set_x = test_set_x / 255
 # Data for optimizer tests
 moons_X, moons_y = make_moons(n_samples=300, noise=.2, random_state=3)
 
+
 def load_planar_dataset():
     np.random.seed(1)
     m = 400  # number of examples
@@ -223,7 +224,7 @@ def test_forward_pass_dropout():
     model.set_activations()
 
     # Check forward propagation
-    y, _ = model.forward_pass(X_assess, [.7]*2)
+    y, _ = model._forward_pass(X_assess, [.7] * 2)
     assert np.allclose(y, [[0.36974721], [0.49683389], [0.04565099], [0.01446893], [0.36974721]])
 
 

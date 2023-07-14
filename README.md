@@ -1,7 +1,9 @@
 <h1 align="center">neural-network</h1>
 
 ---
-**neural-network** is a Python package on TestPyPi that provides a Multi-Layer Perceptron (MLP) framework built using only **NumPy**. The framework supports Gradient Descent, Momentum, RMSprop, Adam optimizers.
+**neural-network** is a Python package on TestPyPi that provides a 
+Multi-Layer Perceptron (MLP) framework built using only [**NumPy**](https://numpy.org/doc/stable/). 
+The framework supports Gradient Descent, Momentum, RMSProp, Adam optimizers.
 
 ## Installation
 
@@ -40,7 +42,7 @@ model.fit(X, y, epochs=1000, learning_rate=0.1, optimizer='adam')
 ```
 When training the model without manually setting the parameters, the activation functions, or/and the loss functions,
 the framework will automatically do the job for you.
-It will initialize the parameters, and the functions according to the type of model (regression or classification) and
+It will initialize the parameters and the functions according to the type of model (regression or classification) and
 its architecture.
 
 ### Making Predictions

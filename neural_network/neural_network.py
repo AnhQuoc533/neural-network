@@ -194,27 +194,31 @@ class NeuralNetwork:
 
     def __init_optimizer(self, optimizer: str = None):
         if optimizer is None:
-            def f(alpha, grad, t): self.standard_update(alpha, grad)
+            def f(alpha, grad, t):
+                self.__basic_update(alpha, grad)
 
         elif optimizer == 'momentum':
             v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
-            def f(alpha, grad, t): self.momentum_update(alpha, grad, v)
+            def f(alpha, grad, t):
+                self.__momentum_update(alpha, grad, v)
 
         elif optimizer == 'rmsprop':
             s = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
-            def f(alpha, grad, t): self.rmsprop_update(alpha, grad, s)
+            def f(alpha, grad, t):
+                self.__rmsprop_update(alpha, grad, s)
 
         elif optimizer == 'adam':
             v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
             s = {key: np.zeros(value.shape) for key, value in v.items()}
-            def f(alpha, grad, t): self.adam_update(alpha, grad, v, s, t)
+            def f(alpha, grad, t):
+                self.__adam_update(alpha, grad, v, s, t)
 
         else:
             raise ValueError("optimizer must be one of 'momentum', 'adam', 'rmsprop', 'adagrad' or None.")
 
         return f
 
-    def forward_pass(self, X, keep_prob: list = None):
+    def _forward_pass(self, X, keep_prob: list = None):
         cache = []
         A_prev = X
         D = None
@@ -232,7 +236,7 @@ class NeuralNetwork:
 
         return A_prev, cache
 
-    def compute_cost(self, y_pred, y_true, lambd=.0):
+    def __compute_cost(self, y_pred, y_true, lambd=.0):
         cost = self.loss(y_pred, y_true).mean()
 
         # L2 regularization
@@ -244,7 +248,7 @@ class NeuralNetwork:
 
         return cost
 
-    def backward_pass(self, dA, cache, gradient: dict, lambd=.0):
+    def __backward_pass(self, dA, cache, gradient: dict, lambd=.0):
         m = len(dA)
         for l in range(len(self.neurons), 0, -1):
             A_prev, Z, *D = cache[l-1]
@@ -265,7 +269,7 @@ class NeuralNetwork:
                 gradient[f'dW{l}'] = (A_prev.T @ dZ) / m
             gradient[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
 
-    def momentum_update(self, lr: float, gradient: dict, v: dict):
+    def __momentum_update(self, lr: float, gradient: dict, v: dict):
         for l in range(1, self.size):
             v[f'dW{l}'] = self.__beta1 * v[f'dW{l}'] + (1 - self.__beta1) * gradient[f'dW{l}']
             v[f'db{l}'] = self.__beta1 * v[f'db{l}'] + (1 - self.__beta1) * gradient[f'db{l}']
@@ -273,7 +277,7 @@ class NeuralNetwork:
             self.__parameters[f'W{l}'] -= lr * v[f'dW{l}']
             self.__parameters[f'b{l}'] -= lr * v[f'db{l}']
 
-    def rmsprop_update(self, lr: float, gradient: dict, s: dict):
+    def __rmsprop_update(self, lr: float, gradient: dict, s: dict):
         for l in range(1, self.size):
             s[f'dW{l}'] = self.__beta2 * s[f'dW{l}'] + (1 - self.__beta2) * gradient[f'dW{l}'] ** 2
             s[f'db{l}'] = self.__beta2 * s[f'db{l}'] + (1 - self.__beta2) * gradient[f'db{l}'] ** 2
@@ -281,21 +285,21 @@ class NeuralNetwork:
             self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + self.__epsilon)
             self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.__epsilon)
 
-    def adam_update(self, lr: float, gradient: dict, v: dict, s: dict, t: int):
+    def __adam_update(self, lr: float, gradient: dict, v: dict, s: dict, t: int):
+        v_correct = 1 - self.__beta1 ** t
+        s_correct = 1 - self.__beta2 ** t
+            
         for l in range(1, self.size):
             v[f'dW{l}'] = self.__beta1 * v[f'dW{l}'] + (1 - self.__beta1) * gradient[f'dW{l}']
             v[f'db{l}'] = self.__beta1 * v[f'db{l}'] + (1 - self.__beta1) * gradient[f'db{l}']
 
-            s[f'dW{l}'] = self.__beta2 * s[f'dW{l}'] + (1 - self.__beta2) * gradient[f'dW{l}'] ** 2
-            s[f'db{l}'] = self.__beta2 * s[f'db{l}'] + (1 - self.__beta2) * gradient[f'db{l}'] ** 2
-
-            v_correct = 1 - self.__beta1 ** t
-            s_correct = 1 - self.__beta2 ** t
+            s[f'dW{l}'] = self.__beta2 * s[f'dW{l}'] + (1 - self.__beta2) * gradient[f'dW{l}']**2
+            s[f'db{l}'] = self.__beta2 * s[f'db{l}'] + (1 - self.__beta2) * gradient[f'db{l}']**2
 
             self.__parameters[f'W{l}'] -= lr * (v[f'dW{l}']/v_correct) / (np.sqrt(s[f'dW{l}']/s_correct) + self.__epsilon)
             self.__parameters[f'b{l}'] -= lr * (v[f'db{l}']/v_correct) / (np.sqrt(s[f'db{l}']/s_correct) + self.__epsilon)
 
-    def standard_update(self, lr: float, gradient: dict):
+    def __basic_update(self, lr: float, gradient: dict):
         for l in range(len(self.neurons), 0, -1):
             self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}']
             self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}']
@@ -380,17 +384,17 @@ class NeuralNetwork:
                 mini_y = y[b*batch_size : (b+1)*batch_size]
 
                 # Forward propagation
-                y_pred, cache = self.forward_pass(mini_X, keep_prob)
+                y_pred, cache = self._forward_pass(mini_X, keep_prob)
 
                 # Compute mini-cost
                 if i % step == 0:
-                    cost += self.compute_cost(y_pred, mini_y, lambd)
+                    cost += self.__compute_cost(y_pred, mini_y, lambd)
 
                 # Backward propagation
                 # dA = self.loss(y_pred, mini_y, derivative=True)
-                self.backward_pass(self.loss(y_pred, mini_y, derivative=True), cache, gradient, lambd)
+                self.__backward_pass(self.loss(y_pred, mini_y, derivative=True), cache, gradient, lambd)
 
-                # Update parameters
+                # Update parameters with optimizer
                 update_parameters(learning_rate, gradient, t := t+1)
 
             # Compute and print cost
@@ -470,7 +474,7 @@ class NeuralNetwork:
             self.set_loss()
 
         # Forward propagation
-        y_pred, cache = self.forward_pass(X)
+        y_pred, cache = self._forward_pass(X)
 
         # Compute approximation of gradients
         grad_approx = []
@@ -480,18 +484,18 @@ class NeuralNetwork:
 
                 # Left side
                 param.flat[i] = tmp_param + epsilon
-                cost_plus = self.compute_cost(self.forward_pass(X)[0], y, lambd)
+                cost_plus = self.__compute_cost(self._forward_pass(X)[0], y, lambd)
 
                 # Right side
                 param.flat[i] = tmp_param - epsilon
-                cost_minus = self.compute_cost(self.forward_pass(X)[0], y, lambd)
+                cost_minus = self.__compute_cost(self._forward_pass(X)[0], y, lambd)
 
                 grad_approx.append((cost_plus - cost_minus) / (2 * epsilon))
                 param.flat[i] = tmp_param
 
         # Backward propagation
         gradients = {}
-        self.backward_pass(self.__loss(y_pred, y, derivative=True), cache, gradients, lambd)
+        self.__backward_pass(self.__loss(y_pred, y, derivative=True), cache, gradients, lambd)
         grad = tuple(gradients['d'+key].ravel() for key in self.__parameters)
         grad = np.concatenate(grad)
 

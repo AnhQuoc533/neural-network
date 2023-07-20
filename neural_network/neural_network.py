@@ -5,7 +5,6 @@ from .activation import relu, sigmoid, tanh, softmax
 
 
 class NeuralNetwork:
-    __epsilon = 1e-8  # Adam
 
     def __init__(self, neurons: list[int], is_clf=True, seed: float = None):
 
@@ -21,9 +20,6 @@ class NeuralNetwork:
         self.__loss = None
         self.__labels = None  # The true classes
         self.__costs = []
-
-        self.__beta1 = 0.9  # Momentum
-        self.__beta2 = 0.999  # RMSprop
 
     @property
     def neurons(self):
@@ -192,7 +188,7 @@ class NeuralNetwork:
 
         return X, y
 
-    def __init_optimizer(self, optimizer: str = None):
+    def __init_optimizer(self, optimizer: str, beta1: float, beta2: float, epsilon: float):
         if optimizer is None:
             def f(alpha, grad, t):
                 self.__basic_update(alpha, grad)
@@ -200,18 +196,18 @@ class NeuralNetwork:
         elif optimizer == 'momentum':
             v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
             def f(alpha, grad, t):
-                self.__momentum_update(alpha, grad, v)
+                self.__momentum_update(alpha, grad, v, beta1)
 
         elif optimizer == 'rmsprop':
             s = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
             def f(alpha, grad, t):
-                self.__rmsprop_update(alpha, grad, s)
+                self.__rmsprop_update(alpha, grad, s, beta2, epsilon)
 
         elif optimizer == 'adam':
             v = {'d'+key: np.zeros(value.shape) for key, value in self.__parameters.items()}
             s = {key: np.zeros(value.shape) for key, value in v.items()}
             def f(alpha, grad, t):
-                self.__adam_update(alpha, grad, v, s, t)
+                self.__adam_update(alpha, grad, v, s, t, beta1, beta2, epsilon)
 
         else:
             raise ValueError("optimizer must be one of 'momentum', 'adam', 'rmsprop', 'adagrad' or None.")
@@ -269,35 +265,44 @@ class NeuralNetwork:
                 gradient[f'dW{l}'] = (A_prev.T @ dZ) / m
             gradient[f'db{l}'] = dZ.mean(axis=0, keepdims=True)
 
-    def __momentum_update(self, lr: float, gradient: dict, v: dict):
+    def __momentum_update(self, lr: float, gradient: dict, v: dict, beta: float):
         for l in range(1, self.size):
-            v[f'dW{l}'] = self.__beta1 * v[f'dW{l}'] + (1 - self.__beta1) * gradient[f'dW{l}']
-            v[f'db{l}'] = self.__beta1 * v[f'db{l}'] + (1 - self.__beta1) * gradient[f'db{l}']
+            v[f'dW{l}'] = beta * v[f'dW{l}'] + (1 - beta) * gradient[f'dW{l}']
+            v[f'db{l}'] = beta * v[f'db{l}'] + (1 - beta) * gradient[f'db{l}']
 
             self.__parameters[f'W{l}'] -= lr * v[f'dW{l}']
             self.__parameters[f'b{l}'] -= lr * v[f'db{l}']
 
-    def __rmsprop_update(self, lr: float, gradient: dict, s: dict):
+    def __rmsprop_update(self, lr: float, gradient: dict, s: dict, beta: float, epsilon: float):
         for l in range(1, self.size):
-            s[f'dW{l}'] = self.__beta2 * s[f'dW{l}'] + (1 - self.__beta2) * gradient[f'dW{l}'] ** 2
-            s[f'db{l}'] = self.__beta2 * s[f'db{l}'] + (1 - self.__beta2) * gradient[f'db{l}'] ** 2
+            s[f'dW{l}'] = beta * s[f'dW{l}'] + (1 - beta) * gradient[f'dW{l}'] ** 2
+            s[f'db{l}'] = beta * s[f'db{l}'] + (1 - beta) * gradient[f'db{l}'] ** 2
 
-            self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + self.__epsilon)
-            self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + self.__epsilon)
+            self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + epsilon)
+            self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + epsilon)
 
-    def __adam_update(self, lr: float, gradient: dict, v: dict, s: dict, t: int):
-        v_correct = 1 - self.__beta1 ** t
-        s_correct = 1 - self.__beta2 ** t
+    def __adam_update(self,
+                      lr: float,
+                      gradient: dict,
+                      v: dict,
+                      s: dict,
+                      t: int,
+                      beta1: float,
+                      beta2: float,
+                      epsilon: float):
+
+        v_correct = 1 - beta1 ** t
+        s_correct = 1 - beta2 ** t
             
         for l in range(1, self.size):
-            v[f'dW{l}'] = self.__beta1 * v[f'dW{l}'] + (1 - self.__beta1) * gradient[f'dW{l}']
-            v[f'db{l}'] = self.__beta1 * v[f'db{l}'] + (1 - self.__beta1) * gradient[f'db{l}']
+            v[f'dW{l}'] = beta1 * v[f'dW{l}'] + (1 - beta1) * gradient[f'dW{l}']
+            v[f'db{l}'] = beta1 * v[f'db{l}'] + (1 - beta1) * gradient[f'db{l}']
 
-            s[f'dW{l}'] = self.__beta2 * s[f'dW{l}'] + (1 - self.__beta2) * gradient[f'dW{l}']**2
-            s[f'db{l}'] = self.__beta2 * s[f'db{l}'] + (1 - self.__beta2) * gradient[f'db{l}']**2
+            s[f'dW{l}'] = beta2 * s[f'dW{l}'] + (1 - beta2) * gradient[f'dW{l}']**2
+            s[f'db{l}'] = beta2 * s[f'db{l}'] + (1 - beta2) * gradient[f'db{l}']**2
 
-            self.__parameters[f'W{l}'] -= lr * (v[f'dW{l}']/v_correct) / (np.sqrt(s[f'dW{l}']/s_correct) + self.__epsilon)
-            self.__parameters[f'b{l}'] -= lr * (v[f'db{l}']/v_correct) / (np.sqrt(s[f'db{l}']/s_correct) + self.__epsilon)
+            self.__parameters[f'W{l}'] -= lr * (v[f'dW{l}']/v_correct) / (np.sqrt(s[f'dW{l}']/s_correct) + epsilon)
+            self.__parameters[f'b{l}'] -= lr * (v[f'db{l}']/v_correct) / (np.sqrt(s[f'db{l}']/s_correct) + epsilon)
 
     def __basic_update(self, lr: float, gradient: dict):
         for l in range(len(self.neurons), 0, -1):
@@ -319,6 +324,9 @@ class NeuralNetwork:
         batch_size: int = None,
         shuffle=False,
         optimizer: str = None,
+        beta1: float = 0.9,
+        beta2: float = 0.999,
+        epsilon: float = 1e-8,
         decay_rate=0
     ):
 
@@ -363,7 +371,7 @@ class NeuralNetwork:
             self.set_loss()
 
         # Initialize optimizer
-        update_parameters = self.__init_optimizer(optimizer)
+        update_parameters = self.__init_optimizer(optimizer, beta1, beta2, epsilon)
 
         # Initialize supporting variables
         self.__costs = []

@@ -356,7 +356,7 @@ class NeuralNetwork:
             raise ValueError('batch_size cannot exceed the number of samples.')
         elif batch_size < 1:
             raise ValueError('A positive integer expected for batch_size.')
-        n_batches = (m // batch_size + 1) if m % batch_size else (m // batch_size)
+        n_batches = - (-m // batch_size)  # Ceiling
 
         # Initialize weights and biases
         if not self.parameters:

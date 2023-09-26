@@ -144,4 +144,4 @@ plot_decision_boundary(model, train_x, train_y)
 </p>
 
 ## License
-This project is licensed under the MIT License, as found in the [LICENSE](LICENSE) file.
+This project has MIT License, as found in the [LICENSE](LICENSE) file.

@@ -1,6 +1,3 @@
-# https://packaging.python.org/en/latest/tutorials/packaging-projects
-# https://docs.python.org/3/tutorial/modules.html#packages
-
 from setuptools import setup
 import pathlib
 
@@ -49,9 +46,15 @@ setup(name='neural-network',
 
 # py setup.py sdist bdist_wheel
 
-# Upload to the TestPyPi repository
+# Upload to TestPyPi
 # twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+# Install from TestPyPi
 # pip install -i https://test.pypi.org/simple/ [project-name]
 
-# Command to upload to the PyPi repository
+# Upload to PyPi
 # twine upload dist/*
+
+# Resources:
+# https://packaging.python.org/en/latest/tutorials/packaging-projects
+# https://docs.python.org/3/tutorial/modules.html#packages

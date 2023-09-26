@@ -281,15 +281,17 @@ class NeuralNetwork:
             self.__parameters[f'W{l}'] -= lr * gradient[f'dW{l}'] / (np.sqrt(s[f'dW{l}']) + epsilon)
             self.__parameters[f'b{l}'] -= lr * gradient[f'db{l}'] / (np.sqrt(s[f'db{l}']) + epsilon)
 
-    def __adam_update(self,
-                      lr: float,
-                      gradient: dict,
-                      v: dict,
-                      s: dict,
-                      t: int,
-                      beta1: float,
-                      beta2: float,
-                      epsilon: float):
+    def __adam_update(
+        self,
+        lr: float,
+        gradient: dict,
+        v: dict,
+        s: dict,
+        t: int,
+        beta1: float,
+        beta2: float,
+        epsilon: float
+    ):
 
         v_correct = 1 - beta1 ** t
         s_correct = 1 - beta2 ** t
@@ -327,7 +329,7 @@ class NeuralNetwork:
         beta1: float = 0.9,
         beta2: float = 0.999,
         epsilon: float = 1e-8,
-        decay_rate=0
+        decay_rate: float = .0
     ):
 
         # Check X, y
@@ -455,6 +457,9 @@ class NeuralNetwork:
             return A_prev
 
     def accuracy_score(self, X, y):
+        if not self.is_clf:
+            raise TypeError('Cannot calculate accuracy score for a regression model.')
+
         y = np.asarray(y)
         if y.ndim != 1:
             raise ValueError('1D array expected for y.')

@@ -6,7 +6,7 @@ Multi-Layer Perceptron (MLP) framework built using only [**NumPy**](https://nump
 The framework supports Gradient Descent, Momentum, RMSProp, Adam optimizers.
 <!-- TABLE OF CONTENTS -->
 <details>
-  <summary>Table of Contents</summary>
+  <summary><h2>Table of Contents</h2></summary>
   <ol>
     <li><a href="#installation">Installation</a>
       <ul>
@@ -31,7 +31,6 @@ The framework supports Gradient Descent, Momentum, RMSProp, Adam optimizers.
     <li><a href="#license">License</a></li>
   </ol>
 </details>
-&nbsp;
 
 ## Installation
 
@@ -45,7 +44,7 @@ matplotlib>= 3.5.1
 ### User installation
 You can install neural-network using `pip`:
 ```
-pip install -i https://test.pypi.org/simple/neural-network
+pip install neural-network
 ```
 
 ## Simple Usage

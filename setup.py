@@ -15,7 +15,7 @@ with (HERE / "neural_network" / "__init__.py").open() as f:
             VERSION = line.strip().split()[2][1:-1]
             break
 
-setup(name='neural-network',
+setup(name='neural_network',
       version=VERSION,
       description='A Neural Network framework for building Multi-layer Perceptron model.',
       long_description=README,
@@ -47,13 +47,13 @@ setup(name='neural-network',
 # py setup.py sdist bdist_wheel
 
 # Upload to TestPyPi
-# twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+# twine upload --repository testpypi dist/*
 
 # Install from TestPyPi
 # pip install -i https://test.pypi.org/simple/ [project-name]
 
 # Upload to PyPi
-# twine upload dist/*
+# twine upload --repository pypi dist/*
 
 # Resources:
 # https://packaging.python.org/en/latest/tutorials/packaging-projects

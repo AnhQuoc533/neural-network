@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_decision_boundary(model, X: np.ndarray, y: np.ndarray):
+def plot_decision_boundary(model, X: np.ndarray, y: np.ndarray, title=''):
     X = X[:, :2]
 
     # Set min and max values and give it some padding
@@ -22,5 +22,6 @@ def plot_decision_boundary(model, X: np.ndarray, y: np.ndarray):
     plt.ylabel('x2')
     plt.xlabel('x1')
     plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.get_cmap('Spectral'))
+    plt.title(title)
 
     plt.show()

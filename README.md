@@ -3,7 +3,7 @@
 ---
 **neural-network** is a Python package on TestPyPi that provides a 
 Multi-Layer Perceptron (MLP) framework built using only [**NumPy**](https://numpy.org/doc/stable/). 
-The framework supports Gradient Descent, Momentum, RMSProp, Adam optimizers.
+The framework supports Gradient Descent, Momentum, RMSProp, and Adam optimizers.
 <!-- TABLE OF CONTENTS -->
 <details>
   <summary><h2>Table of Contents</h2></summary>
@@ -36,9 +36,9 @@ The framework supports Gradient Descent, Momentum, RMSProp, Adam optimizers.
 
 ### Dependencies
 ```
-python>= 3.8
-numpy>= 1.22.1
-matplotlib>= 3.5.1 
+python>=3.8
+numpy>=1.22.1
+matplotlib>=3.5.1 
 ```
 
 ### User installation
@@ -50,7 +50,7 @@ pip install neural-network
 ## Simple Usage
 
 ### Designing the Model Architecture
-To define your MLP model, you need to specify the number of layers, and the number of neurons in each one. \
+To define your MLP model, you need to specify the number of layers and the number of neurons in each one. \
 Unless you want to manually set up the parameters, the size of the input layer is not needed, as it will be automatically determined in the initial training process.
 ```python
 from neural_network import NeuralNetwork
@@ -108,7 +108,7 @@ Apart from the neural network framework, the package also provides:
 All above functions have 2 parameters:
 * `x`: The input values. Even though some functions can accept numeric primitive data type,
   it is advised to use NumPy array.
-* `derivative`: A boolean value indicating whether the function computes the derivative on input `x`. Default is False.
+* `derivative`: A boolean value indicating whether the function computes the derivative on the input `x`. Default is False.
 
 ### Loss functions
 <table>
